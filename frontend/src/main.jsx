@@ -1,0 +1,42 @@
+import React, { useEffect, useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { BriefcaseBusiness, CheckCircle2, FileUp, LayoutDashboard, Plus, Sparkles, Target, UserRound, XCircle } from 'lucide-react'
+import './styles.css'
+
+// In development Vite forwards this path to FastAPI.  Keeping the browser
+// request same-origin avoids hostname-specific CORS/network failures.
+const API = '/api'
+const api = async (path, options) => {
+  const response = await fetch(`${API}${path}`, options)
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(body.detail || 'Something went wrong. Please try again.')
+  return body
+}
+
+function Pill({ children, tone = 'slate' }) { return <span className={`pill ${tone}`}>{children}</span> }
+function Metric({ label, value, icon: Icon, accent }) { return <div className="metric"><div><p>{label}</p><strong>{value}</strong></div><span className={`icon-box ${accent}`}><Icon size={20}/></span></div> }
+
+function App() {
+  const [jobs, setJobs] = useState([]), [candidates, setCandidates] = useState([]), [selectedCandidate, setSelectedCandidate] = useState(''), [selectedJob, setSelectedJob] = useState('')
+  const [result, setResult] = useState(null), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [message, setMessage] = useState('')
+  const [jobForm, setJobForm] = useState({ title: '', company: '', location: 'Remote', description: '' })
+  const load = async () => {
+    try { const [jobData, candidateData] = await Promise.all([api('/jobs'), api('/candidates')]); setJobs(jobData); setCandidates(candidateData); setSelectedJob(String(jobData[0]?.id || '')); setSelectedCandidate(String(candidateData[0]?.id || '')) }
+    catch (e) { setMessage(e.message) } finally { setLoading(false) }
+  }
+  useEffect(() => { load() }, [])
+  const upload = async (event) => { const file = event.target.files[0]; if (!file) return; setBusy(true); setMessage(''); try { const form = new FormData(); form.append('file', file); const candidate = await api('/candidates/upload', { method: 'POST', body: form }); setCandidates(x => [candidate, ...x]); setSelectedCandidate(String(candidate.id)); setMessage(`Resume parsed successfully: ${candidate.name}`) } catch (e) { setMessage(e.message) } finally { setBusy(false); event.target.value = '' } }
+  const createJob = async (event) => { event.preventDefault(); setBusy(true); setMessage(''); try { const job = await api('/jobs', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(jobForm) }); setJobs(x => [job, ...x]); setSelectedJob(String(job.id)); setJobForm({ title:'',company:'',location:'Remote',description:'' }); setMessage('Job created and skills extracted successfully.') } catch(e) { setMessage(e.message) } finally { setBusy(false) } }
+  const match = async () => { if (!selectedCandidate || !selectedJob) return setMessage('Select both a candidate and a job first.'); setBusy(true); setMessage(''); try { setResult(await api(`/matches/${selectedCandidate}/${selectedJob}`)) } catch(e) { setMessage(e.message) } finally { setBusy(false) } }
+  const selected = candidates.find(c => String(c.id) === selectedCandidate)
+  if (loading) return <div className="loader">Loading TalentLens AI…</div>
+  return <main><aside><div className="brand"><Sparkles size={24}/><span>TalentLens <b>AI</b></span></div><nav><a className="active"><LayoutDashboard/> Dashboard</a><a><UserRound/> Candidates</a><a><BriefcaseBusiness/> Jobs</a><a><Target/> Match Analysis</a></nav><div className="side-note"><Sparkles size={17}/><p><b>Explainable AI</b><br/>Local matching. No paid API.</p></div></aside>
+  <section className="content"><header><div><p className="eyebrow">RECRUITMENT INTELLIGENCE PLATFORM</p><h1>Find the right talent, clearly.</h1><p className="sub">Screen resumes, compare candidates with open roles, and reveal the skill gaps that matter.</p></div><label className="upload"><FileUp size={18}/>{busy ? 'Processing…' : 'Upload resume'}<input type="file" accept=".pdf,.docx,.txt" onChange={upload} disabled={busy}/></label></header>
+  {message && <div className={message.includes('successfully') ? 'notice good' : 'notice error'}>{message.includes('successfully') ? <CheckCircle2/> : <XCircle/>}{message}</div>}
+  <div className="metrics"><Metric label="Candidates" value={candidates.length} icon={UserRound} accent="violet"/><Metric label="Open roles" value={jobs.length} icon={BriefcaseBusiness} accent="blue"/><Metric label="Skills detected" value={selected?.skills?.length || 0} icon={Sparkles} accent="mint"/></div>
+  <div className="grid"><section className="panel workflow"><div className="panel-title"><div><p className="eyebrow">MATCH WORKFLOW</p><h2>Compare candidate to role</h2></div><Target className="title-icon"/></div><label>Candidate<select value={selectedCandidate} onChange={e => {setSelectedCandidate(e.target.value); setResult(null)}}><option value="">Choose a candidate</option>{candidates.map(c => <option key={c.id} value={c.id}>{c.name} · {c.source_filename}</option>)}</select></label><label>Target job<select value={selectedJob} onChange={e => {setSelectedJob(e.target.value); setResult(null)}}><option value="">Choose a job</option>{jobs.map(j => <option key={j.id} value={j.id}>{j.title} · {j.company}</option>)}</select></label><button onClick={match} disabled={busy} className="primary">{busy ? 'Analysing…' : 'Run AI match analysis'} <Target size={18}/></button>{selected && <div className="candidate-preview"><div className="avatar">{selected.name.slice(0,1)}</div><div><b>{selected.name}</b><p>{selected.email || 'Contact details not found'}</p><div>{selected.skills.slice(0,6).map(s => <Pill key={s}>{s}</Pill>)}</div></div></div>}</section>
+  <section className="panel results"><div className="panel-title"><div><p className="eyebrow">ANALYSIS OUTPUT</p><h2>{result ? `${result.candidate.name} × ${result.job.title}` : 'Your match result will appear here'}</h2></div></div>{result ? <><div className="score-row"><div className="score"><strong>{result.match_score}%</strong><span>Overall match</span></div><div><p><b>{result.skill_coverage}%</b> skill coverage</p><p><b>{result.text_similarity}%</b> resume relevance</p><small>{result.methodology}</small></div></div><div className="skills-grid"><div><h3><CheckCircle2/> Matched skills</h3>{result.matched_skills.length ? result.matched_skills.map(s => <Pill key={s} tone="green">{s}</Pill>) : <p className="empty">No required skills found.</p>}</div><div><h3><XCircle/> Skill gaps</h3>{result.missing_skills.length ? result.missing_skills.map(s => <Pill key={s} tone="orange">{s}</Pill>) : <p className="empty">No critical skill gaps.</p>}</div></div><div className="recommend"><Sparkles/><div><h3>Learning recommendations</h3>{result.recommendations.length ? result.recommendations.map(r => <p key={r.skill}><b>{r.skill}:</b> {r.recommendation}</p>) : <p>Excellent fit. Encourage portfolio work and role-specific interview preparation.</p>}</div></div></> : <div className="empty-state"><Target size={42}/><p>Upload or select a candidate, choose a job, then run the explainable match analysis.</p></div>}</section></div>
+  <section className="panel job-panel"><div><p className="eyebrow">RECRUITER TOOLS</p><h2>Add an open position</h2></div><form onSubmit={createJob}><input required placeholder="Job title" value={jobForm.title} onChange={e=>setJobForm({...jobForm,title:e.target.value})}/><input placeholder="Company" value={jobForm.company} onChange={e=>setJobForm({...jobForm,company:e.target.value})}/><input placeholder="Location" value={jobForm.location} onChange={e=>setJobForm({...jobForm,location:e.target.value})}/><textarea required placeholder="Paste the job description and required skills…" value={jobForm.description} onChange={e=>setJobForm({...jobForm,description:e.target.value})}/><button className="secondary" disabled={busy}><Plus size={18}/> Create job & extract skills</button></form></section>
+  <section className="jobs"><div className="section-head"><div><p className="eyebrow">OPEN POSITIONS</p><h2>Job requirement overview</h2></div><span>{jobs.length} active</span></div><div className="job-cards">{jobs.map(j=><article key={j.id}><p>{j.company} · {j.location}</p><h3>{j.title}</h3><div>{j.required_skills.map(s=><Pill key={s}>{s}</Pill>)}</div></article>)}</div></section></section></main>
+}
+createRoot(document.getElementById('root')).render(<App />)

@@ -1,60 +1,74 @@
-# TalentLens AI — Intelligent Recruitment Platform
+# TalentLens – Recruitment Intelligence Platform
 
-An AI-driven recruitment intelligence platform designed to automate **resume screening, candidate-job matching, and skill gap analysis**. TalentLens AI helps recruiters evaluate candidates efficiently by extracting relevant information from resumes and providing transparent, explainable matching results.
+## Project Overview
 
-## 🚀 Key Features
+TalentLens is an AI-powered recruitment intelligence platform designed to streamline resume screening, candidate-job matching, skill gap analysis, and candidate recommendations.
 
-* 📄 **Resume Upload**
+The platform helps recruiters evaluate candidates using explainable matching rather than relying only on manual resume screening.
 
-  * Supports PDF, DOCX, and TXT resume formats.
+## Key Features
 
-* 🔍 **Resume Information Extraction**
+* Resume upload with PDF, DOCX, and TXT support
+* Resume information and skill extraction
+* Candidate profile management
+* Job description creation and management
+* Automatic required-skill extraction from job descriptions
+* Candidate-to-job matching
+* Explainable match scoring
+* TF-IDF cosine similarity for resume-job relevance
+* Required-skill coverage analysis
+* Matched and missing skill identification
+* Skill gap percentage calculation
+* Candidate suitability classification:
+  * Strong Match
+  * Moderate Match
+  * Low Match
+* Candidate Recommendation Dashboard
+* Personalized learning recommendations
 
-  * Extracts candidate name, contact details, education, experience, and technical skills.
+## Candidate Recommendation Dashboard
 
-* 💼 **Job Management**
+After a candidate and target job are selected, the dashboard presents:
 
-  * Create and manage job descriptions with required skills.
+* Overall Match Score
+* Required-Skill Coverage
+* Resume Relevance
+* Skill Gap Percentage
+* Suitability Level
+* Matched Skills
+* Missing Skills
+* Explainable Recommendation Summary
+* Learning Recommendations
 
-* 🎯 **Candidate–Job Matching**
+These dashboard values are calculated from the application's actual matching logic and matching response; they are not hard-coded.
 
-  * Ranks candidates against job roles using TF-IDF cosine similarity and skill-based scoring.
+## AI Matching Methodology
 
-* 🧩 **Skill Gap Analysis**
-
-  * Identifies matched skills and missing skills for each candidate.
-
-* 📚 **Learning Recommendations**
-
-  * Provides targeted recommendations to help candidates improve missing skills.
-
-* 📊 **Explainable Results**
-
-  * Displays transparent matching scores and the skills contributing to the result.
-
-* 🗃️ **Local-First Architecture**
-
-  * Uses SQLite and local NLP-style processing without requiring paid AI APIs.
-
-## 🔄 System Workflow
+TalentLens calculates the overall match score as:
 
 ```text
-Resume Upload
-      ↓
-Resume Text Extraction
-      ↓
-Candidate Information & Skill Detection
-      ↓
-Job Role Selection
-      ↓
-Candidate–Job Matching
-      ↓
-Match Score & Skill Analysis
-      ↓
-Missing Skills & Learning Recommendations
+Overall match score = 70% required-skill coverage + 30% TF-IDF cosine similarity of resume and job text
 ```
 
-## 🛠️ Technology Stack
+Required-skill coverage measures how many skills required by the job are present in the candidate profile. TF-IDF (Term Frequency-Inverse Document Frequency) represents the importance of words in the resume and job description. Cosine similarity compares those representations to estimate their textual relevance. Together, these measures provide a transparent combination of explicit skill fit and resume-to-job relevance.
+
+## System Workflow
+
+```mermaid
+flowchart LR
+    A[Resume Upload] --> B[Resume Parsing]
+    B --> C[Skill Extraction]
+    C --> D[Candidate Profile]
+    D --> G[Candidate-Job Matching]
+    E[Job Description] --> F[Required Skill Extraction]
+    F --> G
+    G --> H[Match Score]
+    H --> I[Skill Gap Analysis]
+    I --> J[Candidate Recommendation Dashboard]
+    J --> K[Learning Recommendations]
+```
+
+## Technology Stack
 
 ### Frontend
 
@@ -67,52 +81,60 @@ Missing Skills & Learning Recommendations
 
 * Python
 * FastAPI
-* SQLite
-* PyPDF
-* python-docx
-* scikit-learn
+* SQLAlchemy
 
-### Matching
+### NLP / Matching
 
-* TF-IDF Vectorization
+* TF-IDF
 * Cosine Similarity
-* Skill-Based Matching
+* Rule-based skill extraction
 
-## 📁 Project Structure
+### Database
 
-```text
-TalentLens-AI-Recruitment/
-│
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── parser.py
-│   │   ├── database.py
-│   │   └── skills.py
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── src/
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
-│
-├── .gitignore
-└── README.md
-```
+* SQLite
 
-## 💻 Run Locally
+### Document Processing
 
-### 1. Start the Backend
+* pypdf
+* python-docx
+
+## Project Architecture
+
+* `frontend/` contains the React user interface, including the candidate/job workflow and recommendation dashboard.
+* `backend/` contains the FastAPI service, Python dependencies, and the local SQLite runtime database.
+* `backend/app/` contains the application modules for API routes, database configuration, data models, document parsing, and skill matching helpers.
+* The database layer uses SQLAlchemy with SQLite to store candidate profiles and job descriptions.
+* The API layer exposes endpoints for health checks, candidate listing and resume upload, job listing and creation, and candidate-job match analysis.
+
+## Validation and Testing
+
+The following checks were successfully performed:
+
+* Frontend production build
+* Backend Python compilation
+* Backend dependency verification
+* API health check
+* Candidate listing
+* Job listing
+* TXT resume upload
+* Resume skill extraction
+* Candidate-job matching
+* Recommendation dashboard validation
+
+The end-to-end test successfully returned a real match score, skill coverage, TF-IDF relevance, skill gap, suitability classification, matched skills, missing skills, and learning recommendations.
+
+## How to Run Locally
+
+Open two Windows PowerShell terminals from the project root.
+
+### Backend
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 2. Start the Frontend
-
-Open another PowerShell terminal:
+### Frontend
 
 ```powershell
 cd frontend
@@ -120,33 +142,30 @@ npm install
 npm run dev
 ```
 
-Then open the local Vite URL shown in the terminal, usually:
+Vite will display the local frontend URL in the terminal, usually `http://localhost:5173/`. If that port is unavailable, use the URL Vite reports.
+
+## GitHub Project Structure
 
 ```text
-http://localhost:5173
+backend/
+frontend/
+.gitignore
+README.md
 ```
 
-## 🎓 Project Purpose
+## Future Enhancements
 
-TalentLens AI is developed as a **CSE final-year project** demonstrating how intelligent automation and explainable matching techniques can improve the recruitment process.
+The following are future enhancements and are not currently implemented:
 
-The system focuses on reducing manual resume screening effort while providing recruiters with clear insights into candidate suitability and skill gaps.
+* Advanced semantic resume-job matching using transformer models
+* Multi-resume batch screening
+* Recruiter analytics dashboard
+* Interview question generation
+* Candidate ranking reports
+* Explainable AI visualizations
+* Authentication and role-based access
+* Cloud deployment
 
-## 🔮 Future Enhancements
+## Academic Project Value
 
-* Advanced semantic resume matching using transformer-based models
-* Multi-language resume processing
-* Automated interview question generation
-* Candidate ranking dashboards
-* Recruiter authentication and role-based access
-* Cloud deployment and scalable database support
-
-## 📌 Project Status
-
-**Development Status:** Functional Prototype
-
-TalentLens AI currently provides resume upload, candidate extraction, job management, candidate-job matching, skill gap analysis, and learning recommendations through a local web application.
-
----
-
-**TalentLens AI — Making Recruitment Smarter, Faster and More Explainable.**
+TalentLens demonstrates practical application of Artificial Intelligence, Natural Language Processing, Information Retrieval, Machine Learning-based similarity, and full-stack web development. Its transparent scoring, skill-gap analysis, and recommendation output also demonstrate explainable candidate evaluation for recruitment workflows.

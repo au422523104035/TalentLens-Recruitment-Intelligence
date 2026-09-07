@@ -131,7 +131,17 @@ def match_candidate(candidate_id: int, job_id: int, db: Annotated[Session, Depen
     matrix = TfidfVectorizer(stop_words="english").fit_transform([candidate.resume_text, job.description])
     text_score = float(cosine_similarity(matrix[0:1], matrix[1:2])[0][0] * 100)
     score = round(0.7 * skill_score + 0.3 * text_score)
+    skill_gap = round(100 - skill_score)
+    suitability = "Strong Match" if score >= 75 else "Moderate Match" if score >= 50 else "Low Match"
+    summary = (
+        f"{candidate.name} is a {suitability.lower()} for {job.title}: they meet "
+        f"{len(matched)} of {len(required)} required skills ({round(skill_score)}% coverage)."
+    )
+    summary += (f" Prioritise {', '.join(missing[:3])} to close the most relevant gaps."
+                if missing else " No required skill gaps were detected.")
     return {"candidate": serialize_candidate(candidate), "job": serialize_job(job), "match_score": score,
             "skill_coverage": round(skill_score), "text_similarity": round(text_score), "matched_skills": matched,
             "missing_skills": missing, "recommendations": recommendations_for(missing),
+            "skill_gap_percentage": skill_gap, "suitability": suitability,
+            "recommendation_summary": summary,
             "methodology": "70% required-skill coverage + 30% TF-IDF cosine similarity of resume and job text."}
